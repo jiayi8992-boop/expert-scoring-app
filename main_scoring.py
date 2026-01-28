@@ -260,7 +260,7 @@ class CorrectScoringSystem:
                         '1分次数': c[1],
                         '0分次数': c[0],
                         '平均分': round(avg_score, 3),
-                        '得分率(%)': round(avg_score / 3 * 100, 2)
+                        '得分效率(%)': round(avg_score / 3 * 100, 2)
                     })
 
             results.sort(key=lambda x: x['总得分'], reverse=True)

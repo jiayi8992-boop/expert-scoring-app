@@ -101,7 +101,7 @@ if uploaded_file:
                     col2.metric("最高平均分专家", results[0]['专家姓名'], f"{results[0]['平均分']} 分")
 
                     # 全场平均效率
-                    avg_eff = sum(item['效率(%)'] for item in results) / len(results)
+                    avg_eff = sum(item['得分效率(%)'] for item in results) / len(results)
                     col3.metric("全场平均效率", f"{avg_eff:.1f}%")
 
                     # 评审量最多的专家
