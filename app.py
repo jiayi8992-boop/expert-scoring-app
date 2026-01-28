@@ -58,7 +58,7 @@ if uploaded_file:
                             '1分次数': c[1],
                             '0分次数': c[0],
                             '平均分': round(avg_score, 2),
-                            '得分率(%)': round(avg_score / 3 * 100, 1)
+                            '得分效率(%)': round(avg_score / 3 * 100, 1)
                         })
 
                 if not results:
