@@ -254,12 +254,12 @@ class CorrectScoringSystem:
                         '排名': 0,
                         '专家姓名': name,
                         '总得分': data['total_score'],
-                        '评审数': data['review_count'],
-                        '3分次数': c[3],
-                        '2分次数': c[2],
-                        '1分次数': c[1],
-                        '0分次数': c[0],
-                        '平均分': round(avg_score, 3),
+                        '评审作品数': data['review_count'],
+                        '3分次数（最接近）': c[3],
+                        '2分次数（误差≤8）': c[2],
+                        '1分次数（8-15）': c[1],
+                        '0分次数（误差＞15）': c[0],
+                        '平均每作品得分': round(avg_score, 3),
                         '得分效率(%)': round(avg_score / 3 * 100, 2)
                     })
 

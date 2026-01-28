@@ -50,20 +50,20 @@ if uploaded_file:
                             '排名': 0,
                             '专家姓名': name,
                             '总得分': data['total_score'],
-                            '评审数': data['review_count'],
-                            '3分次数': c[3],
-                            '2分次数': c[2],
-                            '1分次数': c[1],
-                            '0分次数': c[0],
-                            '平均分': round(avg_score, 2),
-                            '得分率(%)': round(avg_score / 3 * 100, 1)
+                            '评审作品数': data['review_count'],
+                            '3分次数（最接近）': c[3],
+                            '2分次数（误差≤8）': c[2],
+                            '1分次数（误差8-15）': c[1],
+                            '0分次数（误差＞15）': c[0],
+                            '平均每作品得分': round(avg_score, 2),
+                            '得分效率(%)': round(avg_score / 3 * 100, 1)
                         })
 
                 if not results:
                     st.warning("未能提取到有效数据，请检查 Excel 格式。")
                 else:
                     # 按照平均分降序排序
-                    results.sort(key=lambda x: x['平均分'], reverse=True)
+                    results.sort(key=lambda x: x['平均每作品得分'], reverse=True)
                     for i, item in enumerate(results, 1):
                         item['排名'] = i
 
@@ -76,20 +76,20 @@ if uploaded_file:
                     col1.metric("涉及专家总量", f"{len(results)} 位")
 
                     # 最高平均分专家 (使用统一的 '平均分' 键名)
-                    col2.metric("最高平均分专家", results[0]['专家姓名'], f"{results[0]['平均分']} 分")
+                    col2.metric("最高平均每作品得分专家", results[0]['专家姓名'], f"{results[0]['平均每作品得分']} 分")
 
                     # 全场平均效率 (使用统一的 '得分率(%)' 键名)
-                    avg_eff = sum(item['得分率(%)'] for item in results) / len(results)
-                    col3.metric("全场平均得分率", f"{avg_eff:.1f}%")
+                    avg_eff = sum(item['得分效率(%)'] for item in results) / len(results)
+                    col3.metric("全场平均得分效率", f"{avg_eff:.1f}%")
 
                     # 评审量最多的专家
-                    most_active = max(results, key=lambda x: x['评审数'])
-                    col4.metric("评审量冠军", most_active['专家姓名'], f"{most_active['评审数']} 件")
+                    most_active = max(results, key=lambda x: x['评审作品数'])
+                    col4.metric("评审量冠军", most_active['专家姓名'], f"{most_active['评审作品数']} 件")
 
                     st.markdown("---")
 
                     # 6. 展示排名全表
-                    st.subheader("🏆 专家评分排名全表 (按平均分排序)")
+                    st.subheader("🏆 专家评分排名全表 (按平均每作品得分排序)")
                     st.dataframe(df_res, use_container_width=True, hide_index=True)
 
                     # 7. 导出功能
