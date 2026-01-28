@@ -3,6 +3,7 @@ import pandas as pd
 import io
 # 导入你原来的逻辑类
 from main_scoring import CorrectScoringSystem
+from calendar import c
 
 # 设置网页标题和图标
 st.set_page_config(page_title="专家评分分析系统", page_icon="📊", layout="wide")
@@ -17,7 +18,7 @@ if 'engine' not in st.session_state:
 # 2. 侧边栏：设置评分规则
 st.sidebar.header("⚙️ 评分规则设置")
 mid_score = st.sidebar.slider("误差在 8-15 分之间给多少分？", 0, 2, 1)
-st.sidebar.info("规则说明：\n- 最接近平均分：3分\n- 误差 ≤ 8分：2分\n- 误差 > 15分：0分")
+st.sidebar.info("规则说明：\n- 专家标准分最接近平均分：3分\n- 误差 ≤ 8分：2分\n- 误差 > 15分：0分")
 
 # 3. 主界面：文件上传
 uploaded_file = st.file_uploader("请上传专家评分 Excel 文件 (支持 .xlsx, .xls)", type=["xlsx", "xls"])
@@ -36,36 +37,59 @@ if uploaded_file:
         # 4. 执行计算按钮
         if st.button("🚀 开始分析专家得分"):
             with st.spinner('计算中...'):
-                # 调用核心逻辑
                 engine.expert_scores.clear()
                 engine.calculate_scores(mid_range_score=mid_score)
 
-                # 提取结果
+                # --- 提取细化后的结果 ---
                 results = []
                 for name, data in engine.expert_scores.items():
                     if data['review_count'] > 0:
                         avg_score = data['total_score'] / data['review_count']
+                        # 获取次数统计字典
+                        c = data['counts']
+
                         results.append({
                             '排名': 0,
                             '专家姓名': name,
                             '总得分': data['total_score'],
                             '评审数': data['review_count'],
+                            '3分次数': c[3],
+                            '2分次数': c[2],
+                            '1分次数': c[1],
+                            '0分次数': c[0],
                             '平均分': round(avg_score, 2),
-                            '效率(%)': round(avg_score / 3 * 100, 1)
+                            '得分率(%)': round(avg_score / 3 * 100, 1)
                         })
 
                 if not results:
-                    st.warning("未能从文件中提取到有效的专家评分数据，请检查格式。")
+                    st.warning("未能提取到有效数据，请检查 Excel 格式。")
                 else:
-                    # 排序逻辑：优先按平均分降序排，相同则看总得分
-                    results.sort(key=lambda x: (x['平均分'], x['总得分']), reverse=True)
-
-                    # 修复后的循环：为每一项赋予排名序号
+                    # 排序：按总得分降序
+                    results.sort(key=lambda x: x['总得分'], reverse=True)
                     for i, item in enumerate(results, 1):
                         item['排名'] = i
 
-                    # 转换为 DataFrame
                     df_res = pd.DataFrame(results)
+
+                    # 展示统计看板
+                    st.subheader("📊 关键指标统计")
+                    # ... (看板代码保持不变) ...
+
+                    # 展示表格 (重点：现在会显示次数列了)
+                    st.subheader("🏆 专家评分排名全表 (含分值分布)")
+                    st.dataframe(df_res, use_container_width=True, hide_index=True)
+
+                    # 导出 Excel (包含细化列)
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_res.to_excel(writer, index=False, sheet_name='专家评分细化分析')
+
+                    st.download_button(
+                        label="📥 下载详细分析结果 (Excel)",
+                        data=output.getvalue(),
+                        file_name="专家评分细化统计.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
 
                     # 5. 展示关键指标统计看板
                     st.subheader("📊 关键指标统计")

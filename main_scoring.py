@@ -18,6 +18,7 @@ class CorrectScoringSystem:
         self.expert_scores = defaultdict(lambda: {
             'total_score': 0,
             'review_count': 0,
+            'counts': {3: 0, 2: 0, 1: 0, 0: 0},  # <--- 新增这行，存放3/2/1/0分的次数
             'details': []
         })
 
@@ -47,7 +48,7 @@ class CorrectScoringSystem:
             print("\n📊 数据示例（前3行）:")
             for i in range(min(3, len(self.data))):
                 row = self.data.iloc[i]
-                print(f"  行{i+1}: 作品={row[1]}, 平均分={row[2]}, 专家1姓名={row[5]}, 专家1原始分={row[6]}")
+                print(f"  行{i+1}: 作品={row[1]}, 平均分={row[2]}, 专家1姓名={row[5]}, 专家1标准分={row[7]}")
 
             return True
 
@@ -85,6 +86,7 @@ class CorrectScoringSystem:
             {'name_idx': 17, 'raw_idx': 18, 'std_idx': 19}  # 专家五
         ]
 
+
         for idx in range(total_items):
             try:
                 row = self.data.iloc[idx]
@@ -99,14 +101,14 @@ class CorrectScoringSystem:
 
                 for expert in expert_config:
                     name_idx = expert['name_idx']
-                    raw_idx = expert['raw_idx']
+                    std_idx = expert['std_idx']
 
-                    if name_idx < len(row) and raw_idx < len(row):
+                    if name_idx < len(row) and std_idx < len(row):
                         expert_name = str(row[name_idx]).strip()
-                        raw_score = row[raw_idx]
+                        std_score = row[std_idx]
 
                         # 跳过无效数据
-                        if (pd.isna(expert_name) or pd.isna(raw_score) or
+                        if (pd.isna(expert_name) or pd.isna(std_score) or
                             expert_name == '' or expert_name == 'nan' or
                             expert_name == '姓名'):
                             continue
@@ -114,7 +116,7 @@ class CorrectScoringSystem:
                         try:
                             expert_data.append({
                                 'name': expert_name,
-                                'raw_score': float(raw_score),
+                                'std_score': float(std_score),
                                 'avg_standard': float(avg_standard)
                             })
                         except:
@@ -126,7 +128,7 @@ class CorrectScoringSystem:
 
                 # 计算误差
                 for expert in expert_data:
-                    expert['error'] = abs(expert['raw_score'] - expert['avg_standard'])
+                    expert['error'] = abs(expert['std_score'] - expert['avg_standard'])
 
                 # 找出最接近的专家（可能有多个）
                 errors = [expert['error'] for expert in expert_data]
@@ -150,10 +152,11 @@ class CorrectScoringSystem:
                     expert_name = expert['name']
                     self.expert_scores[expert_name]['total_score'] += score
                     self.expert_scores[expert_name]['review_count'] += 1
+                    self.expert_scores[expert_name]['counts'][score] += 1
                     self.expert_scores[expert_name]['details'].append({
                         'item_id': row[1] if 1 < len(row) and not pd.isna(row[1]) else f"作品_{idx+1}",
                         'avg_standard': expert['avg_standard'],
-                        'raw_score': expert['raw_score'],
+                        'std_score': expert['std_score'],
                         'error': expert['error'],
                         'score': score
                     })
@@ -192,10 +195,15 @@ class CorrectScoringSystem:
             if data['review_count'] > 0:
                 avg_score = data['total_score'] / data['review_count']
                 efficiency = avg_score / 3 * 100  # 得分效率
+                counts = data['counts']  # 提取次数
                 results.append({
                     'name': name,
                     'total': data['total_score'],
                     'count': data['review_count'],
+                    'c3': counts[3],  # 3分次数
+                    'c2': counts[2],  # 2分次数
+                    'c1': counts[1],  # 1分次数
+                    'c0': counts[0],  # 0分次数
                     'avg': avg_score,
                     'efficiency': efficiency
                 })
@@ -207,23 +215,17 @@ class CorrectScoringSystem:
         # 按总得分排序
         results.sort(key=lambda x: x['total'], reverse=True)
 
-        # 确定显示数量
-        if show_all:
-            display_count = len(results)
-            print(f"\n📊 显示所有 {len(results):,} 位专家")
-        else:
-            display_count = min(top_n, len(results))
-            print(f"\n📊 显示前 {display_count} 位专家（共 {len(results):,} 位）")
+        display_count = len(results) if show_all else min(top_n, len(results))
 
-        print(f"{'='*90}")
-        print(f"专家评分排名")
-        print(f"{'='*90}")
-        print(f"{'排名':<6} {'专家姓名':<15} {'总得分':<10} {'评审数':<10} {'平均分':<10} {'效率(%)':<10}")
-        print(f"{'-'*90}")
+        print(f"{'=' * 110}")
+        print(
+            f"{'排名':<6} {'专家姓名':<12} {'总得分':<8} {'评审数':<8} {'3分':<5} {'2分':<5} {'1分':<5} {'0分':<5} {'平均分':<8} {'效率(%)':<10}")
+        print(f"{'-' * 110}")
 
         for i, expert in enumerate(results[:display_count], 1):
-            print(f"{i:<6} {expert['name']:<15} {expert['total']:<10} "
-                  f"{expert['count']:<10} {expert['avg']:<10.2f} {expert['efficiency']:<9.1f}%")
+            print(f"{i:<6} {expert['name']:<12} {expert['total']:<8} "
+                  f"{expert['count']:<10} {expert['c3']:<6} {expert['c2']:<6} "
+                  f"{expert['c1']:<6} {expert['c0']:<6} {expert['avg']:<8.2f} {expert['efficiency']:<9.1f}%")
 
         # 统计信息
         if results:
@@ -240,62 +242,36 @@ class CorrectScoringSystem:
                 print(f"  {i:2d}. {expert['name']:<12} {expert['total']:>6}分 "
                       f"(评审{expert['count']:>4}次, 效率{expert['efficiency']:.1f}%)")
 
-    def export_results(self, filename="专家评分结果_最终正确版.xlsx"):
-        """导出结果到Excel"""
+    def export_results(self, filename="专家评分结果_细化统计版.xlsx"):
+        """导出结果到Excel - 包含3/2/1/0分细化统计"""
         try:
-            # 准备排名数据
             results = []
             for name, data in self.expert_scores.items():
                 if data['review_count'] > 0:
                     avg_score = data['total_score'] / data['review_count']
+                    c = data['counts']
                     results.append({
                         '排名': 0,
                         '专家姓名': name,
                         '总得分': data['total_score'],
-                        '评审作品数': data['review_count'],
-                        '平均每作品得分': round(avg_score, 3),
-                        '得分效率(%)': round(avg_score / 3 * 100, 2)
+                        '评审数': data['review_count'],
+                        '3分次数': c[3],
+                        '2分次数': c[2],
+                        '1分次数': c[1],
+                        '0分次数': c[0],
+                        '平均分': round(avg_score, 3),
+                        '得分率(%)': round(avg_score / 3 * 100, 2)
                     })
 
-            # 按总得分排序
             results.sort(key=lambda x: x['总得分'], reverse=True)
             for i, item in enumerate(results, 1):
                 item['排名'] = i
 
-            # 创建Excel文件
             with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-                # 1. 排名总表
-                df_ranking = pd.DataFrame(results)
-                df_ranking.to_excel(writer, sheet_name='专家排名', index=False)
+                pd.DataFrame(results).to_excel(writer, sheet_name='专家排名', index=False)
 
-                # 2. 统计信息
-                stats_data = {
-                    '统计项目': [
-                        '总专家数', '总作品数', '有效作品数',
-                        '平均总得分', '最高总得分', '最低总得分',
-                        '平均评审次数', '平均得分效率',
-                        '计算完成时间'
-                    ],
-                    '数值': [
-                        len(results),
-                        len(self.data),
-                        sum([e['评审作品数'] for e in results]),
-                        round(np.mean([e['总得分'] for e in results]), 2),
-                        max([e['总得分'] for e in results]),
-                        min([e['总得分'] for e in results]),
-                        round(np.mean([e['评审作品数'] for e in results]), 1),
-                        f"{np.mean([e['得分效率(%)'] for e in results]):.1f}%",
-                        pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
-                    ]
-                }
-                df_stats = pd.DataFrame(stats_data)
-                df_stats.to_excel(writer, sheet_name='统计信息', index=False)
-
-            print(f"\n✅ 结果已保存到: {os.path.abspath(filename)}")
-            print(f"  包含: 专家排名表、统计信息")
-
+            print(f"\n✅ 细化结果已导出至: {filename}")
             return True
-
         except Exception as e:
             print(f"❌ 导出失败: {e}")
             return False
