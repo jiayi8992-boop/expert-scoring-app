@@ -52,12 +52,12 @@ if uploaded_file:
                             '排名': 0,
                             '专家姓名': name,
                             '总得分': data['total_score'],
-                            '评审数': data['review_count'],
-                            '3分次数': c[3],
-                            '2分次数': c[2],
-                            '1分次数': c[1],
-                            '0分次数': c[0],
-                            '平均分': round(avg_score, 2),
+                            '评审作品数': data['review_count'],
+                            '3分次数（最接近）': c[3],
+                            '2分次数（误差≤8）': c[2],
+                            '1分次数（误差8-15）': c[1],
+                            '0分次数（误差＞15）': c[0],
+                            '平均每作品得分': round(avg_score, 2),
                             '得分效率(%)': round(avg_score / 3 * 100, 1)
                         })
 
@@ -75,21 +75,13 @@ if uploaded_file:
                     st.subheader("📊 关键指标统计")
                     # ... (看板代码保持不变) ...
 
-                    # 展示表格 (重点：现在会显示次数列了)
-                    st.subheader("🏆 专家评分排名全表 (含分值分布)")
-                    st.dataframe(df_res, use_container_width=True, hide_index=True)
 
                     # 导出 Excel (包含细化列)
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         df_res.to_excel(writer, index=False, sheet_name='专家评分细化分析')
 
-                    st.download_button(
-                        label="📥 下载详细分析结果 (Excel)",
-                        data=output.getvalue(),
-                        file_name="专家评分细化统计.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+
 
                     # 5. 展示关键指标统计看板
                     st.subheader("📊 关键指标统计")
@@ -105,8 +97,8 @@ if uploaded_file:
                     col3.metric("全场平均效率", f"{avg_eff:.1f}%")
 
                     # 评审量最多的专家
-                    most_active = max(results, key=lambda x: x['评审数'])
-                    col4.metric("评审量冠军", most_active['专家姓名'], f"{most_active['评审数']} 件")
+                    most_active = max(results, key=lambda x: x['评审作品数'])
+                    col4.metric("评审量冠军", most_active['专家姓名'], f"{most_active['评审作品数']} 件")
 
                     st.markdown("---")
 
@@ -123,7 +115,7 @@ if uploaded_file:
                     st.download_button(
                         label="📥 点击下载分析结果 (Excel)",
                         data=output.getvalue(),
-                        file_name="专家评分结果_分析完成.xlsx",
+                        file_name="专家评分结果.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
 
